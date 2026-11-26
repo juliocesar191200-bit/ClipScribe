@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClipScribe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #222536;
+      --border: #2e3148;
+      --accent: #6366f1;
+      --accent2: #818cf8;
+      --green: #22c55e;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --radius: 12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header .logo { width: 36px; height: 36px; border-radius: 8px; overflow: hidden; }
+    .header h1 { font-size: 18px; font-weight: 600; }
+    .header span { color: var(--muted); font-size: 13px; margin-left: 4px; }
+
+    /* ── Tabs ── */
+    .tab-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      padding: 0 32px;
+    }
+    .tab-btn {
+      padding: 11px 22px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      margin-bottom: -1px;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent); }
+
+    /* ── Layout ── */
+    .main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    /* ── Upload Zone ── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 36px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(99,102,241,.06);
+    }
+    .upload-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    }
+    .upload-zone .icon { font-size: 32px; margin-bottom: 8px; }
+    .upload-zone p { color: var(--muted); line-height: 1.6; font-size: 13px; }
+    .upload-zone strong { color: var(--text); }
+    .upload-zone .exts { margin-top: 4px; font-size: 11px; color: var(--muted); }
+
+    .progress-wrap {
+      height: 3px; background: var(--border);
+      border-radius: 99px; overflow: hidden; margin-top: 10px;
+    }
+    .progress-bar {
+      height: 100%; background: var(--accent);
+      border-radius: 99px; transition: width .3s;
+    }
+
+    /* ── Video list ── */
+    #video-list { margin-top: 4px; }
+
+    .date-label {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .08em;
+      margin: 14px 0 7px;
+      padding-bottom: 5px; border-bottom: 1px solid var(--border);
+    }
+
+    .video-item {
+      border-radius: 10px;
+      background: var(--surface2);
+      border: 1px solid transparent;
+      margin-bottom: 6px;
+      transition: border-color .15s;
+      overflow: hidden;
+    }
+    .video-item:hover { border-color: var(--border); }
+
+    .vi-top {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px;
+    }
+    .vi-info { flex: 1; min-width: 0; }
+    .vi-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .vi-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Badges ── */
+    .badge {
+      font-size: 10px; font-weight: 700;
+      padding: 2px 9px; border-radius: 99px; flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .badge-done     { background: rgba(34,197,94,.15);  color: var(--green); }
+    .badge-pending  { background: rgba(245,158,11,.12); color: var(--amber); }
+    .badge-skip     { background: rgba(239,68,68,.12);  color: var(--red); }
+    .badge-running  { background: rgba(99,102,241,.15); color: var(--accent2);
+                      animation: bpulse 1.2s ease-in-out infinite; }
+    @keyframes bpulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+    /* ── Copy buttons ── */
+    .vi-actions {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      padding: 0 12px 10px 36px;
+    }
+    .btn-copy {
+      font-size: 11px; font-weight: 600;
+      padding: 5px 12px; border-radius: 6px; border: 1px solid;
+      cursor: pointer; transition: all .15s;
+      display: flex; align-items: center; gap: 5px;
+      background: transparent;
+    }
+    .btn-copy-ptbr { color: var(--green); border-color: rgba(34,197,94,.3); }
+    .btn-copy-ptbr:hover { background: rgba(34,197,94,.1); border-color: var(--green); }
+    .btn-copy-es   { color: #f87171; border-color: rgba(248,113,113,.3); }
+    .btn-copy-es:hover { background: rgba(248,113,113,.1); border-color: #f87171; }
+    .btn-copy-raw  { color: var(--amber); border-color: rgba(245,158,11,.3); }
+    .btn-copy-raw:hover { background: rgba(245,158,11,.1); border-color: var(--amber); }
+    .btn-copy.copied { color: var(--green) !important; border-color: var(--green) !important; }
+
+    /* ── Copy All ── */
+    .copy-all-section {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .btn-copy-all {
+      font-size: 12px; font-weight: 600;
+      padding: 7px 16px; border-radius: 8px; border: 1px solid;
+      cursor: pointer; transition: all .15s;
+      background: transparent;
+    }
+    .btn-copy-all-ptbr  { color: var(--green); border-color: rgba(34,197,94,.3); }
+    .btn-copy-all-ptbr:hover  { background: rgba(34,197,94,.1); border-color: var(--green); }
+    .btn-copy-all-es    { color: #f87171; border-color: rgba(248,113,113,.3); }
+    .btn-copy-all-es:hover    { background: rgba(248,113,113,.1); border-color: #f87171; }
+
+    /* ── Delete / select ── */
+    .btn-icon {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; padding: 4px; border-radius: 6px;
+      transition: color .15s, background .15s; flex-shrink: 0;
+    }
+    .btn-icon:hover { color: var(--red); background: rgba(239,68,68,.1); }
+
+    .select-bar {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    }
+    .select-bar label { color: var(--muted); font-size: 12px; cursor: pointer; }
+    .select-bar button {
+      margin-left: auto;
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.25);
+      color: var(--red); padding: 3px 12px;
+      border-radius: 6px; font-size: 12px; cursor: pointer;
+    }
+    .select-bar button:disabled { opacity: .35; cursor: not-allowed; }
+
+    input[type=checkbox] { accent-color: var(--accent); cursor: pointer; }
+
+    .empty-state { text-align: center; padding: 28px 0; color: var(--muted); font-size: 13px; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+
+    /* ── Right column ── */
+    .right-col { display: flex; flex-direction: column; gap: 20px; }
+
+    .btn-primary {
+      width: 100%; padding: 13px;
+      border-radius: 10px; border: none;
+      background: var(--accent); color: #fff;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: opacity .15s, transform .1s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-primary:hover   { opacity: .88; }
+    .btn-primary:active  { transform: scale(.98); }
+    .btn-primary:disabled { opacity: .35; cursor: not-allowed; }
+
+    .proc-progress-wrap { margin-top: 14px; display: none; }
+    .proc-progress-track {
+      height: 6px; background: var(--border);
+      border-radius: 99px; overflow: hidden;
+    }
+    .proc-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 99px; width: 0%;
+      transition: width .5s ease;
+    }
+    .proc-progress-label { font-size: 11px; color: var(--muted); margin-top: 5px; text-align: right; }
+
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600;
+      padding: 3px 10px; border-radius: 99px; margin-bottom: 14px;
+    }
+    .chip-idle    { background: rgba(100,116,139,.12); color: var(--muted); }
+    .chip-running { background: rgba(99,102,241,.15);  color: var(--accent2); }
+    .chip-done    { background: rgba(34,197,94,.12);   color: var(--green); }
+    .chip-error   { background: rgba(239,68,68,.12);   color: var(--red); }
+
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .pulse { animation: dpulse 1s ease-in-out infinite; }
+    @keyframes dpulse { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+    .log-box {
+      background: #0a0c14; border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 11.5px; line-height: 1.7; color: #94a3b8;
+      height: 200px; overflow-y: auto;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .log-ok   { color: var(--green); }
+    .log-err  { color: var(--red); }
+    .log-info { color: var(--accent2); }
+    .log-wait { color: var(--amber); }
+
+    .summary {
+      margin-top: 12px; padding: 10px 14px;
+      border-radius: 8px; font-size: 12px;
+      background: rgba(34,197,94,.07);
+      border: 1px solid rgba(34,197,94,.2);
+      color: #86efac; display: none;
+    }
+
+    @media (max-width: 768px) {
+      .main { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo"><img src="/static/logo.png" style="width:36px;height:36px;object-fit:cover;border-radius:8px;" /></div>
+  <div>
+    <h1>ClipScribe<span>/ Video Transcription &amp; Adaptation</span></h1>
+  </div>
+  <div style="margin-left:auto;font-size:11px;color:var(--muted);background:var(--surface2);padding:3px 10px;border-radius:99px;border:1px solid var(--border);">
+    v{{ version }}
+  </div>
+</header>
+
+<nav class="tab-bar">
+  <button class="tab-btn active" data-tab="transcrever" onclick="switchTab('transcrever')">Transcrever</button>
+  <button class="tab-btn" data-tab="validados" onclick="switchTab('validados')">ADS Validados</button>
+</nav>
+
+<div class="main">
+
+  <!-- Coluna Esquerda -->
+  <div>
+    <div class="card">
+      <div class="card-title" id="upload-title">Upload de Vídeos</div>
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" multiple
+               accept=".mp4,.mov,.avi,.mkv,.m4v,.webm" />
+        <div class="icon">&#9729;&#65039;</div>
+        <p><strong>Arraste os vídeos aqui</strong><br>ou clique para selecionar</p>
+        <div class="exts">MP4 · MOV · AVI · MKV · M4V · WEBM</div>
+      </div>
+      <div id="upload-progress" style="display:none; margin-top:10px;">
+        <div class="progress-wrap"><div class="progress-bar" style="width:60%"></div></div>
+        <p style="font-size:11px;color:var(--muted);margin-top:5px;" id="upload-label">Enviando...</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <div class="card-title" id="queue-title">Fila de Vídeos</div>
+      <div class="select-bar">
+        <input type="checkbox" id="select-all" onchange="toggleAll(this)" />
+        <label for="select-all">Selecionar todos</label>
+        <button id="btn-del-sel" onclick="deleteSelected()" disabled>&#128465; Apagar selecionados</button>
+      </div>
+      <hr class="divider" />
+      <div id="video-list">
+        <div class="empty-state">Nenhum vídeo ainda.<br>Faça upload acima.</div>
+      </div>
+      <div id="copy-all-wrap"></div>
+    </div>
+  </div>
+
+  <!-- Coluna Direita -->
+  <div class="right-col">
+
+    <div class="card">
+      <div class="card-title">Processamento</div>
+
+      <div id="status-chip" class="chip chip-idle"><div class="dot"></div> Aguardando</div>
+
+      <button class="btn-primary" id="btn-process" onclick="startProcessing()">
+        &#9654; Processar Criativos
+      </button>
+
+      <div class="proc-progress-wrap" id="proc-progress-wrap">
+        <div class="proc-progress-track">
+          <div class="proc-progress-fill" id="proc-progress-fill"></div>
+        </div>
+        <div class="proc-progress-label" id="proc-progress-label">0%</div>
+      </div>
+
+      <div id="summary" class="summary"></div>
+
+      <div style="margin-top:14px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">LOG</div>
+        <div class="log-box" id="log-box">Pronto.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const TABS = {
+    transcrever: {
+      videos:      '/api/videos',
+      upload:      '/api/upload',
+      delete:      '/api/delete',
+      process:     '/api/process',
+      status:      '/api/status',
+      texts:       '/api/texts',
+      reprocess:   '/api/reprocess',
+      btnLabel:    '&#9654; Processar Criativos',
+      uploadTitle: 'Upload de V\u00eddeos',
+      queueTitle:  'Fila de V\u00eddeos',
+      onlyPtbr:    false,
+      useFilename: false,
+      rawOnly:     true,
+    },
+    validados: {
+      videos:      '/api/videos_v',
+      upload:      '/api/upload_v',
+      delete:      '/api/delete_v',
+      process:     '/api/process_v',
+      status:      '/api/status_v',
+      texts:       '/api/texts_v',
+      reprocess:   '/api/reprocess_v',
+      btnLabel:    '&#9654; Traduzir ADS Validados',
+      uploadTitle: 'Upload de ADS Validados',
+      queueTitle:  'Fila de ADS Validados',
+      onlyPtbr:    true,
+      useFilename: true,
+      rawOnly:     false,
+    },
+  };
+
+  let activeTab    = 'transcrever';
+  let pollInterval = null;
+  let lastLogLen   = 0;
+  let allVideos    = [];
+  let VR           = {};
+  let currentVideo = '';
+
+  function switchTab(name) {
+    if (activeTab === name) return;
+    if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+
+    activeTab    = name;
+    lastLogLen   = 0;
+    allVideos    = [];
+    VR           = {};
+    currentVideo = '';
+
+    document.querySelectorAll('.tab-btn').forEach(t =>
+      t.classList.toggle('active', t.dataset.tab === name)
+    );
+
+    const cfg = TABS[name];
+    document.getElementById('upload-title').textContent  = cfg.uploadTitle;
+    document.getElementById('queue-title').textContent   = cfg.queueTitle;
+    document.getElementById('btn-process').innerHTML     = cfg.btnLabel;
+
+    clearLog();
+    document.getElementById('summary').style.display            = 'none';
+    document.getElementById('proc-progress-wrap').style.display = 'none';
+    document.getElementById('btn-process').disabled             = false;
+    document.getElementById('select-all').checked               = false;
+    setChip('idle', 'Aguardando');
+
+    loadVideos();
+    resumeIfRunning();
+  }
+
+  // Upload
+  const zone      = document.getElementById('upload-zone');
+  const fileInput = document.getElementById('file-input');
+
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); uploadFiles(e.dataTransfer.files); });
+  fileInput.addEventListener('change', () => uploadFiles(fileInput.files));
+
+  async function uploadFiles(files) {
+    if (!files.length) return;
+    const form  = new FormData();
+    for (const f of files) form.append('videos', f);
+    const prog  = document.getElementById('upload-progress');
+    const label = document.getElementById('upload-label');
+    prog.style.display = 'block';
+    label.textContent  = 'Enviando ' + files.length + ' arquivo(s)...';
+    try {
+      const res  = await fetch(TABS[activeTab].upload, { method: 'POST', body: form });
+      const data = await res.json();
+      label.textContent = '\u2713 ' + (data.saved && data.saved.length || 0) + ' enviado(s)';
+      setTimeout(() => { prog.style.display = 'none'; fileInput.value = ''; }, 2500);
+      loadVideos();
+    } catch { label.textContent = '\u2717 Erro no upload'; }
+  }
+
+  // Videos
+  async function loadVideos() {
+    const res = await fetch(TABS[activeTab].videos);
+    allVideos = await res.json();
+    await loadTexts();
+    renderVideos();
+    updateDelBtn();
+  }
+
+  // Textos ja gravados em disco (sobrevivem a reinicios do app)
+  async function loadTexts() {
+    try {
+      const res   = await fetch(TABS[activeTab].texts);
+      const saved = await res.json();
+      for (const [name, data] of Object.entries(saved)) {
+        VR[name] = Object.assign({}, data, VR[name] || {});
+      }
+    } catch {}
+  }
+
+  function renderVideos() {
+    const el = document.getElementById('video-list');
+    if (!allVideos.length) {
+      el.innerHTML = '<div class="empty-state">Nenhum v\u00eddeo ainda.<br>Fa\u00e7a upload acima.</div>';
+      renderCopyAll();
+      return;
+    }
+
+    const idxMap = {};
+    allVideos.forEach((v, i) => { idxMap[v.name] = i + 1; });
+
+    const groups = {};
+    for (const v of allVideos) {
+      const d = v.date || 'Sem data';
+      if (!groups[d]) groups[d] = [];
+      groups[d].push(v);
+    }
+
+    el.innerHTML = Object.entries(groups)
+      .sort(([a],[b]) => b.localeCompare(a))
+      .map(([date, items]) =>
+        '<div class="date-label">' + fmtDate(date) + '</div>' +
+        items.map(v => renderVideoItem(v, idxMap[v.name])).join('')
+      ).join('');
+
+    renderCopyAll();
+  }
+
+  // "Criativo 3 (150k)" - numero da fila + nome original do arquivo
+  function label(name, idx) {
+    const base = String(name).replace(/\.[^.]+$/, '');
+    return TABS[activeTab].useFilename ? base : 'Criativo ' + idx + ' (' + base + ')';
+  }
+
+  // tem algum texto util guardado para este video?
+  function hasText(r) {
+    return !!((r.transcricao && r.transcricao.trim()) || (r.ptbr && r.ptbr.trim()));
+  }
+
+  function renderVideoItem(v, idx) {
+    const r        = VR[v.name] || {};
+    const st       = r.status || (v.processed ? 'done' : 'pending');
+    const cur      = (currentVideo === v.name);
+    const onlyPtbr = TABS[activeTab].onlyPtbr;
+
+    let badge = '', actions = '';
+
+    if (cur && (st === 'transcribing' || st === 'adapting')) {
+      const lbl = st === 'transcribing' ? '\uD83C\uDF99 Transcrevendo...' : '\u2736 Adaptando...';
+      badge = '<span class="badge badge-running">' + lbl + '</span>';
+    } else if (st === 'done' && !hasText(r)) {
+      badge   = '<span class="badge badge-skip">\u26A0 Sem texto</span>';
+      actions = '<div class="vi-actions"><button class="btn-copy" data-redo="' + esc(v.name) + '">\u21BB Transcrever de novo</button></div>';
+    } else if (st === 'done') {
+      badge = '<span class="badge badge-done">\u2713 Pronto</span>';
+      let btns = '';
+      if (TABS[activeTab].rawOnly) {
+        btns = '<button class="btn-copy btn-copy-raw" data-file="' + esc(v.name) + '" data-lang="transcricao" data-index="' + idx + '">\uD83D\uDCCB Copiar Transcri\u00E7\u00E3o</button>';
+      } else {
+        btns = '<button class="btn-copy btn-copy-ptbr" data-file="' + esc(v.name) + '" data-lang="ptbr" data-index="' + idx + '">\uD83C\uDDE7\uD83C\uDDF7 Copiar PT-BR</button>';
+        if (!onlyPtbr) btns += '<button class="btn-copy btn-copy-es" data-file="' + esc(v.name) + '" data-lang="es" data-index="' + idx + '">\uD83C\uDDEA\uD83C\uDDF8 Copiar Espanhol</button>';
+      }
+      actions = '<div class="vi-actions">' + btns + '</div>';
+    } else if (st === 'skipped' || st === 'error') {
+      badge   = '<span class="badge badge-skip">\u26A0 Pulado</span>';
+      actions = '<div class="vi-actions"><button class="btn-copy btn-copy-raw" data-file="' + esc(v.name) + '" data-lang="transcricao" data-index="' + idx + '">\uD83D\uDCCB Copiar Transcri\u00e7\u00e3o Bruta</button></div>';
+    } else if (st === 'pending') {
+      badge = '<span class="badge badge-pending">Pendente</span>';
+    } else {
+      badge = v.processed ? '<span class="badge badge-done">Processado</span>' : '<span class="badge badge-pending">Pendente</span>';
+    }
+
+    return '<div class="video-item"><div class="vi-top">' +
+      '<input type="checkbox" class="vi-check" value="' + esc(v.name) + '" onchange="updateDelBtn()" />' +
+      '<span style="font-size:17px;">\uD83C\uDFA5</span>' +
+      '<div class="vi-info"><div class="vi-name" title="' + esc(v.name) + '">' + esc(v.name) + '</div>' +
+      '<div class="vi-meta">' + (TABS[activeTab].useFilename ? '' : esc(label(v.name, idx)) + ' \u00b7 ') + fmtSize(v.size) + '</div></div>' +
+      badge +
+      '<button class="btn-icon" data-del="' + esc(v.name) + '" title="Apagar">\uD83D\uDDD1</button>' +
+      '</div>' + actions + '</div>';
+  }
+
+  // Eventos
+  document.getElementById('video-list').addEventListener('click', async e => {
+    const copyBtn = e.target.closest('[data-lang]');
+    if (copyBtn) {
+      const file = copyBtn.dataset.file;
+      const lang = copyBtn.dataset.lang;
+      const idx  = copyBtn.dataset.index || '';
+      const body = (VR[file] && VR[file][lang]) || '';
+      if (!body) {
+        copyBtn.textContent = '\u2717 Sem texto \u2014 reprocesse';
+        setTimeout(() => { copyBtn.textContent = '\uD83D\uDCCB Copiar Transcri\u00E7\u00E3o'; }, 2500);
+        return;
+      }
+      const prefix = label(file, idx);
+      const text = prefix ? prefix + '\n\n' + body : body;
+      try {
+        await navigator.clipboard.writeText(text);
+        const orig = copyBtn.innerHTML;
+        copyBtn.classList.add('copied');
+        copyBtn.textContent = '\u2713 Copiado!';
+        setTimeout(() => { copyBtn.classList.remove('copied'); copyBtn.innerHTML = orig; }, 1800);
+      } catch { copyBtn.textContent = '\u2717 Erro'; }
+    }
+
+    const redoBtn = e.target.closest('[data-redo]');
+    if (redoBtn) {
+      redoBtn.textContent = 'Voltando para a fila...';
+      await fetch(TABS[activeTab].reprocess, { method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ names: [redoBtn.dataset.redo] }) });
+      delete VR[redoBtn.dataset.redo];
+      await loadVideos();
+      return;
+    }
+
+    const delBtn = e.target.closest('[data-del]');
+    if (delBtn) {
+      const name = delBtn.dataset.del;
+      if (!confirm('Apagar "' + name + '"?')) return;
+      await fetch(TABS[activeTab].delete, { method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ names: [name] }) });
+      loadVideos();
+    }
+  });
+
+  function toggleAll(cb) {
+    document.querySelectorAll('.vi-check').forEach(c => c.checked = cb.checked);
+    updateDelBtn();
+  }
+
+  function updateDelBtn() {
+    document.getElementById('btn-del-sel').disabled =
+      document.querySelectorAll('.vi-check:checked').length === 0;
+  }
+
+  async function deleteSelected() {
+    const names = [...document.querySelectorAll('.vi-check:checked')].map(c => c.value);
+    if (!names.length) return;
+    if (!confirm('Apagar ' + names.length + ' v\u00eddeo(s)?')) return;
+    await fetch(TABS[activeTab].delete, { method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ names }) });
+    document.getElementById('select-all').checked = false;
+    loadVideos();
+  }
+
+  // Copy All
+  function renderCopyAll() {
+    const wrap      = document.getElementById('copy-all-wrap');
+    const onlyPtbr  = TABS[activeTab].onlyPtbr;
+    const idxMap    = {};
+    allVideos.forEach((v, i) => { idxMap[v.name] = i + 1; });
+
+    const doneVideos = allVideos.filter(v => {
+      const r  = VR[v.name] || {};
+      const st = r.status || (v.processed ? 'done' : '');
+      return st === 'done' && hasText(r);
+    });
+
+    if (!doneVideos.length) { wrap.innerHTML = ''; return; }
+
+    let btns = '';
+    if (TABS[activeTab].rawOnly) {
+      btns = '<button class="btn-copy-all btn-copy-all-ptbr" onclick="copyAll(\'transcricao\')">\uD83D\uDCCB Copiar Todas Transcri\u00E7\u00F5es</button>';
+    } else {
+      btns = '<button class="btn-copy-all btn-copy-all-ptbr" onclick="copyAll(\'ptbr\')">\uD83C\uDDE7\uD83C\uDDF7 Copiar Todos PT-BR</button>';
+      if (!onlyPtbr) btns += '<button class="btn-copy-all btn-copy-all-es" onclick="copyAll(\'es\')">\uD83C\uDDEA\uD83C\uDDF8 Copiar Todos Espanhol</button>';
+    }
+
+    wrap.innerHTML = '<div class="copy-all-section">' +
+      '<div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Copiar Todos</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + btns + '</div></div>';
+  }
+
+  async function copyAll(lang) {
+    const idxMap = {};
+    allVideos.forEach((v, i) => { idxMap[v.name] = i + 1; });
+
+    const doneVideos = allVideos.filter(v => {
+      const st = (VR[v.name] && VR[v.name].status) || (v.processed ? 'done' : '');
+      return st === 'done' && VR[v.name] && VR[v.name][lang];
+    });
+
+    if (!doneVideos.length) { alert('Nenhum criativo pronto para copiar.'); return; }
+
+    const parts = doneVideos.map(v => {
+      const prefix = label(v.name, idxMap[v.name]);
+      return prefix + '\n\n' + VR[v.name][lang];
+    });
+    const text  = parts.join('\n\n---\n\n');
+
+    const btn = document.querySelector('.btn-copy-all-' + lang);
+    try {
+      await navigator.clipboard.writeText(text);
+      if (btn) {
+        const orig = btn.innerHTML;
+        btn.textContent = '\u2713 Copiado!';
+        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+      }
+    } catch { if (btn) btn.textContent = '\u2717 Erro'; }
+  }
+
+  // Processamento
+  async function startProcessing() {
+    const btn = document.getElementById('btn-process');
+    btn.disabled = true;
+    clearLog();
+    currentVideo = '';
+    document.getElementById('summary').style.display            = 'none';
+    document.getElementById('proc-progress-wrap').style.display = 'none';
+
+    const res  = await fetch(TABS[activeTab].process, { method: 'POST' });
+    const data = await res.json();
+
+    if (data.error) {
+      appendLog('\u2717 ' + data.error, 'err');
+      setChip('error', '\u2717 Erro');
+      btn.disabled = false;
+      return;
+    }
+
+    setChip('running', 'Processando...');
+    setProgress(2, 'Iniciando');
+    pollInterval = setInterval(pollStatus, 1500);
+  }
+
+  async function pollStatus() {
+    try {
+      const res  = await fetch(TABS[activeTab].status);
+      const data = await res.json();
+
+      VR           = Object.assign({}, VR, data.results || {});
+      currentVideo = data.current || '';
+
+      const newLines = data.log.slice(lastLogLen);
+      lastLogLen = data.log.length;
+      for (const line of newLines) {
+        const type = line.startsWith('\u2713') ? 'ok'
+                   : line.startsWith('\u2717') ? 'err'
+                   : line.startsWith('[')      ? 'info'
+                   : line.startsWith('\u26A0') ? 'wait' : '';
+        appendLog(line, type);
+      }
+
+      if (data.progress !== undefined) setProgress(data.progress, data.progress_label);
+
+      renderVideos();
+
+      if (data.phase === 'done') {
+        clearInterval(pollInterval); pollInterval = null;
+        setChip('done', '\u2713 Conclu\u00eddo');
+        setProgress(100, 'Conclu\u00eddo');
+
+        const done    = Object.values(VR).filter(r => r.status === 'done').length;
+        const skipped = Object.values(VR).filter(r => r.status === 'skipped').length;
+        const sumEl   = document.getElementById('summary');
+        sumEl.style.display = 'block';
+        const palavra = TABS[activeTab].rawOnly ? 'transcrito(s)' : 'traduzido(s)';
+        sumEl.innerHTML = '\u2713 <strong>' + done + '</strong> ' + palavra +
+          (skipped ? ' &nbsp;&middot;&nbsp; \u26A0 <strong>' + skipped + '</strong> pulado(s) \u2014 copie a transcri\u00e7\u00e3o bruta acima' : '');
+
+        document.getElementById('btn-process').disabled = false;
+        lastLogLen = 0;
+        loadVideos();
+      }
+
+      if (data.phase === 'error') {
+        clearInterval(pollInterval); pollInterval = null;
+        setChip('error', '\u2717 Erro');
+        renderVideos();
+        document.getElementById('btn-process').disabled = false;
+        lastLogLen = 0;
+      }
+    } catch (e) { }
+  }
+
+  // UI helpers
+  function setProgress(pct, label) {
+    document.getElementById('proc-progress-wrap').style.display = 'block';
+    document.getElementById('proc-progress-fill').style.width   = pct + '%';
+    document.getElementById('proc-progress-label').textContent  = label ? label + ' \u2014 ' + pct + '%' : pct + '%';
+  }
+
+  function setChip(type, text) {
+    const chip = document.getElementById('status-chip');
+    const map  = { idle:'chip-idle', running:'chip-running', done:'chip-done', error:'chip-error' };
+    chip.className = 'chip ' + (map[type] || 'chip-idle');
+    chip.innerHTML = '<div class="dot ' + (type === 'running' ? 'pulse' : '') + '"></div> ' + text;
+  }
+
+  function clearLog() {
+    document.getElementById('log-box').innerHTML = '';
+    lastLogLen = 0;
+  }
+
+  function appendLog(msg, type) {
+    const box  = document.getElementById('log-box');
+    const cls  = type === 'ok' ? 'log-ok' : type === 'err' ? 'log-err'
+               : type === 'info' ? 'log-info' : type === 'wait' ? 'log-wait' : '';
+    const span = document.createElement('span');
+    if (cls) span.className = cls;
+    span.textContent = msg + '\n';
+    box.appendChild(span);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function fmtSize(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
+    return (b/1073741824).toFixed(2) + ' GB';
+  }
+
+  function fmtDate(d) {
+    if (!d || d === 'Sem data') return 'Sem data';
+    try { const p = d.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; } catch { return d; }
+  }
+
+  loadVideos();
+  resumeIfRunning();
+
+  // Heartbeat: o servidor se desliga sozinho quando esta aba fecha
+  setInterval(() => fetch('/__ping').catch(() => {}), 15000);
+  fetch('/__ping').catch(() => {});
+  addEventListener('pagehide', () => navigator.sendBeacon('/__bye'));
+
+  // Se o app ja estiver transcrevendo (ex.: pagina recarregada), reassume o acompanhamento
+  async function resumeIfRunning() {
+    try {
+      const res  = await fetch(TABS[activeTab].status);
+      const data = await res.json();
+      if (data.phase !== 'processing') return;
+      document.getElementById('btn-process').disabled = true;
+      setChip('running', 'Processando...');
+      lastLogLen = 0;
+      if (!pollInterval) pollInterval = setInterval(pollStatus, 1500);
+    } catch {}
+  }
+</script>
+</body>
+</html>

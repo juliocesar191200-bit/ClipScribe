@@ -1,0 +1,13 @@
+.venv/
+ffmpeg/
+__pycache__/
+videos/
+videos_validados/
+output/
+textos*.json
+transcricoes_brutas*.json
+uploads_meta*.json
+credentials.json
+token.json
+gdocs_config.json
+SUBIR_NO_GITHUB.ps1
